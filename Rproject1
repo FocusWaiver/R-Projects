@@ -1,0 +1,37 @@
+# Rproject1
+# Learn how to code though basic data minipulation of a dataset.
+
+
+#current problems:
+#Can't get plot to show up
+#install nonbase package? ggplot?
+
+
+#ReadCSV
+df <-read.csv("/uploads/FunSeroNum.csv", header=TRUE)
+
+#str(df)
+#remove 0s and NAs
+df[df == 0] <- NA
+
+totalT21<- as.numeric(na.omit(df$totalT21))
+totalT22<- as.numeric(na.omit(df$totalT22))
+lastYr <- c(totalT21,totalT22)
+
+# stats of data
+a21 = summary(totalT21)
+a22 = summary(totalT22)
+yr = summary(lastYr)
+
+#summaries
+"AGID Tests in Jul-Dec 2021"
+a21
+"AGID Tests in Jan-Jun 2022"
+a22
+"AGID Tests in the last Year"
+yr
+
+xd <- factor(df$date21)
+
+
+plot(x = xd, y = df$totalT21)
