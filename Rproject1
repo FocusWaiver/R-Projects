@@ -6,13 +6,13 @@
 #Can't get plot to show up
 #install nonbase package? ggplot?
 
-
-#ReadCSV
-df <-read.csv("/uploads/FunSeroNum.csv", header=TRUE)
+#Rstudio upload file and import file as dataset
+df<-FunSeroNum
 
 #str(df)
 #remove 0s and NAs
 df[df == 0] <- NA
+
 
 totalT21<- as.numeric(na.omit(df$totalT21))
 totalT22<- as.numeric(na.omit(df$totalT22))
@@ -32,6 +32,7 @@ a22
 yr
 
 xd <- factor(df$date21)
-
-
-plot(x = xd, y = df$totalT21)
+plot_data <- data.frame(x = xd, y = df$totalT21)
+plot_data
+ggplot(df, aes(x = xd,y = df$totalT21)) +
+  geom_point()
