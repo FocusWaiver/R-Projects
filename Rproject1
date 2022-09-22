@@ -3,8 +3,7 @@
 
 
 #current problems:
-#Can't get plot to show up
-#install nonbase package? ggplot?
+# both section
 
 #Rstudio upload file and import file as dataset
 df<-FunSeroNum
@@ -12,16 +11,20 @@ df<-FunSeroNum
 #str(df)
 #remove 0s and NAs
 df[df == 0] <- NA
+# K Notes: Variable(delete index) = is NA in totalT21 or is NA in totalT22...
+#   added to this variable. You can just add . to variables
+del.idx<-(is.na(df$totalT21)|is.na(df$totalT22))
+df1<-df[!del.idx,]
 
-
-totalT21<- as.numeric(na.omit(df$totalT21))
-totalT22<- as.numeric(na.omit(df$totalT22))
-lastYr <- c(totalT21,totalT22)
+#obsolete from kNotes
+#totalT21<- as.numeric(na.omit(df$totalT21))
+#totalT22<- as.numeric(na.omit(df$totalT22))
+#lastYr <- c(totalT21,totalT22)
 
 # stats of data
-a21 = summary(totalT21)
-a22 = summary(totalT22)
-yr = summary(lastYr)
+a21 = summary(as.numeric(df1$totalT21))
+a22 = summary(as.numeric(df1$totalT22))
+yr = summary(c(df1$totalT21,df1$totalT22))
 
 #summaries
 "AGID Tests in Jul-Dec 2021"
@@ -31,8 +34,35 @@ a22
 "AGID Tests in the last Year"
 yr
 
-xd <- factor(df$date21)
-plot_data <- data.frame(x = xd, y = df$totalT21)
-plot_data
-ggplot(df, aes(x = xd,y = df$totalT21)) +
-  geom_point()
+xd21 <- factor(df1$date21)
+#7-12/2021
+ggplot(df, aes(x = xd21,y = df1$totalT21)) +
+  geom_point() +
+  ggtitle("Total AGID Tests per week, 7-12/2021") +
+  xlab("Weeks") +
+  ylab("Total AGID tests")+
+  scale_x_discrete(breaks = xd21[c(T,F,F,F)]) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+#1-6/2022
+xd22 <- factor(df1$date22)
+xd22
+
+ggplot(df, aes(x = xd22,y = df1$totalT22)) +
+  geom_point() +
+  ggtitle("Total AGID Tests per week, 1-6/2022") +
+  xlab("Weeks") +
+  ylab("Total AGID tests") +
+  scale_x_discrete(breaks = xd22[c(T,F,F,F)]) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+#both?
+xyr <- factor(c(df1$date21,df1$date22))
+
+ggplot(df, aes(x = xyr,y = c(df1$totalT21,df1$totalT22))) +
+  geom_point() +
+  ggtitle("Total AGID Tests per week, Last 12 months") +
+  xlab("Weeks") +
+  ylab("Total AGID tests") +
+  scale_x_discrete(breaks = xyr[c(T,F,F,F)]) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
