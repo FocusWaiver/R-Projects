@@ -1,1 +1,45 @@
-#hope this works
+---
+title: "NetworkAnalysisLearnR"
+format: html
+editor: visual
+---
+
+## Network Analysis using R
+
+Tutorial author: Martin Schweinberger
+
+sourced from Language Technology and Data Analysis Laboratory
+
+## Vocabulary
+
+| Term | Definition | Notes | Reference Location |
+|------------------|------------------|-------------------|------------------|
+| network(graph) | Set of vertices and edges, G = (V, E) |  | 2 |
+| nodes(vertices) | representing entities |  | 2 |
+| edges(links/arcs) | representing relationships between entities, Set = Every element of E is in V\*V |  | 2 |
+| directed network(digraph) | asymmetric, i.e word A precedes B != B precedes A. Distinguish in-degree and out-dgree |  | 4 |
+| in-degree/out-degree | incoming/outgoing edges of each node |  | 4 |
+| undirected network | symmetric, If A connects to B, B connects to A (character co-occurence) |  | 4 |
+| weight | numerical value, representing strength/frequency/magnitude of relationship |  | 5 |
+| unweighted networks | edges are equal whether present (w=1) or absent (w=0). Use when weight unimportant, e.g. coinfection, or friendship |  | 5 |
+| weighted networks | gradient information, e.g. \# of eggs in a set of robin nests |  | 5 |
+| adjecency matrix | A, a square matrix sized \|V\|\*\|V\|, where A~ij~ == edge weight from nodes i to j (or 1 if unweighted, 0 if no edge). In an Undirected network, A is symmetric (A~ij~ = A~ji~) | one equal way to represent network | 6 |
+| edge list | 2 or 3 col table, where each row is one (non-zero occuring) edge. Source, target nodes and weight(optional) | second equal way to represent network, more memory-efficient for sparse | 6 |
+| sparse network | many nodes are unconnected | most real world networks | 6 |
+| complete graph(network) | every node connected to every other |  | 7 |
+| Density | proportion of all possible edges that are present | Complete graph = 1, sparse network is close to 0 | 7 |
+| Diameter | length of longest shortest path between any two nodes in the network | small diameter means any two nodes can be reached in few steps | 7 |
+| Clustering coefficient (transitivity) | how often 2 nodes that share common neighbor are also connected |  | 7 |
+| Connected components | maximal subgraph in which every node can reach every other node. (e.g. all workers at one mill in a set of steel mills) |  | 7 |
+|  |  |  |  |
+|  |  |  |  |
+
+Notes to self:
+
+-   brush up on linear algebra( symmetric networks)
+
+-   Quarto Markdown shortcuts: <https://quarto.org/docs/visual-editor/options.html>
+
+-   Might need to reinstall packages on home system
+
+# Tutorial Data Prep
