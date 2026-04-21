@@ -43,3 +43,251 @@ Notes to self:
 -   Might need to reinstall packages on home system
 
 # Tutorial Data Prep
+**Data Note**: Could not find given data set, had ClaudeAI make a duplicate txt file to use. There are minor differences in output.
+
+## Building co-occurrence Matrix (COmatrix)
+
+`table()` to build character-by-scene matrix
+
+`crosprod()` for cross product to make symmetric character-by-character COmatrix
+
+diagonal to zero removes self-occurances
+
+```{r}
+net_cmx <- crossprod(table(net_dat[1:2]))
+diag(net_cmx) <- 0
+net_df <- as.data.frame(net_cmx)
+```
+
+## Build Node Attribute Table
+
+```{r}
+#create dataset, rename 2 headings, summarize by number of occ.
+vi <- net_dat |>
+  dplyr::rename(node = "person", n = "occurrences") |>
+  dplyr::group_by(node) |>
+  dplyr::summarize(n = sum(n))
+
+#types for future type organization
+mon <- c("ABRAM", "BALTHASAR", "BENVOLIO", "LADY MONTAGUE", "MONTAGUE", "ROMEO")
+cap <- c("CAPULET", "CAPULET'S COUSIN", "FIRST SERVANT", "GREGORY", "JULIET",
+         "LADY CAPULET", "NURSE", "PETER", "SAMPSON", "TYBALT")
+
+#Add Type column with succinct logic check to sort by
+vi <- vi |>
+  dplyr::mutate(type = dplyr::case_when(
+    node %in% mon ~ "Montague",
+    node %in% cap ~ "Capulet",
+    TRUE          ~ "Other"
+  ))
+```
+
+## Build Edge List
+
+```{r}
+# Make COmatrix into longform(+rows,-col), add 'from' col, change header name, remove entries with n=0
+ed <- net_df |>
+  dplyr::mutate(from = rownames(net_df)) |>
+  tidyr::pivot_longer(
+    cols      = -from,
+    names_to  = "to",
+    values_to = "n"
+  ) |>
+  dplyr::filter(n > 0)
+```
+
+Note: really like the space alignment convention. Why the hyphen in `-from`?
+
+Sandbox
+
+```{r}
+#check if you only mutate what happens
+echeck <- net_df |>
+  dplyr::mutate(from = rownames(net_df))
+ #without hyphen? ...Come back to that
+ech1 <- net_df |>
+  dplyr::mutate(from = rownames(net_df)) |>
+  tidyr::pivot_longer(
+    cols      = "from",
+    names_to  = "to",
+    values_to = "n"
+  ) |>
+  dplyr::filter(n > 0)
+```
+
+## Build igraph and tidygraph
+
+```{r}
+ig <- igraph::graph_from_data_frame(
+  d        = ed,
+  vertices = vi,
+  directed = FALSE
+)
+
+tg <- tidygraph::as_tbl_graph(ig) |>
+  tidygraph::activate(nodes) |>
+  dplyr::mutate(label = name)
+```
+
+Properties inspection, (Again different values due to different data, but look similar)
+
+```{r}
+#concatenate and print properties
+cat("Nodes:        ", igraph::vcount(ig), "\n",
+    "Edges:        ", igraph::ecount(ig), "\n",
+    "Density:      ", round(igraph::edge_density(ig), 3), "\n",
+    "Diameter:     ", igraph::diameter(ig), "\n",
+    "Transitivity: ", round(igraph::transitivity(ig, type = "global"), 3), "\n"
+)
+```
+
+### Some Lessons/thoughts/questions:
+
+Why is the density \>1?
+
+A: concept of density in multigraph is not well defined. There is no max number of vertices because COmatrix values are more than 0 and 1. However, `igraph` did have parameter for directed/undirected. Edge density in this form is meaningless, would need a custom function. If total amount is infinite you can't find a meaningful density. Tutorial may be more application based than math based.
+
+Notes from Olivia: Eric Kolaczyk, McGill. Check if mutli(multigraph is every time they occur is a new edge) or weighted. Calc density on Multi? (nchoose 2 number of scenes denominator, part of defining a denominator to make it finite). You can also change the multigraph to weighted and then find it. *So determine if this is weighted or multigraph*
+
+In our COmatrix, cell (i,j) is the number of scenes char i and char j share, thus edge weight. (dot product X-transposed times X of the character-by-scene indicator matrix?)
+
+Diagonal of COmatrix set to 0 to remove self-loops (also if two characters never share scene?)
+
+# Network Visualization
+
+`quanteda. textplots::textplot_network()` can generate a network plot from a feature co-occurance matrix (FCM), but has limited customization vs `ggraph` . Convert data frame to document-feature matrix (DFM), then to an FCM
+
+```{r}
+net_dfm <- quanteda::as.dfm(net_df)
+net_fcm <- quanteda::fcm(net_dfm, tri = FALSE)
+```
+
+```{r}
+#generate network plot (initial)
+tenMinFreq <- quanteda.textplots::textplot_network(
+  x             = net_fcm,
+  min_freq      = 0.1,
+  edge_alpha    = 0.5,
+  edge_color    = "gray50",
+  edge_size     = 2,
+  vertex_labelsize = net_dfm |>
+    quanteda::convert(to = "data.frame") |>
+    dplyr::select(-doc_id) |>
+    rowSums() |>
+    log(),
+  vertex_color  = "#8b05a3",
+  vertex_size   = 2
+)
+#changed min_freq to see if it would pick up any new values, A: Yes, why assume 0.5? I think weirdness is from density probability being greater than 1? 0.01 has all vertices connected. 0.5 could be to be consistant with quanteda documentation
+```
+
+## Highly custom Tidy networks with ggraph
+
+Using `igraph` + `tidygraph` + `ggraph` pipeline
+
+Layout algorithms
+
+| Layout | Description | Best uses |
+|----|----|----|
+| "fr" | Fruchterman-Reingold force-directed | General use; groups connected nodes |
+| "kk" | Kamada-Kawai spring model | shortest path |
+| "circle" | nodes arranged in a circle | small networks; periodic structure |
+| "tree" | hierarchical tree layout | DAGs(?) and hierarchical data |
+| "stress" | stress-majorization | More stable than "fr" across runs |
+
+Using fr. It is force-directed where nodes repel each other and the edges are like springs pulling their connected nodes together. `set.seed()` is important for reproducibility. ?Like choose a random value?
+
+```{r}
+set.seed(1)
+
+tg_la = tg |>
+    ggraph::ggraph(layout = "fr") +
+
+    geom_edge_arc(
+        colour   = "gray50",
+        lineend  = "round",
+        strength = 0.1,
+        aes(edge_width = n, alpha = n)
+    ) +
+
+    geom_node_point(
+        aes(color = type),
+        size = log(vi$n) * 2
+    ) +
+
+    geom_node_label(
+        aes(label = label),
+        repel         = TRUE,
+        point.padding = unit(0.2, "lines"),
+        size          = sqrt(vi$n),
+        colour        = "gray10"
+    ) +
+
+    scale_edge_width(range = c(0.2, 3)) +
+    scale_edge_alpha(range = c(0.05, 0.4)) +
+
+    scale_color_manual(
+        values = c("Montague" = "#2166ac",
+                   "Capulet"  = "#d6604d",
+                   "Other"    = "#4dac26")
+    ) +
+
+    theme_graph(background = "white") +
+
+    theme(
+        legend.position = "top",
+        legend.title    = element_blank()
+    ) +
+
+    guides(edge_width = "none", edge_alpha = "none")
+```
+
+Notes: `vi$n` is total number of lines spoken across all scenes
+
+## Network Stats
+
+Common to check different centrality measures. A node that ranks highly on all measures is more robustly central than one that ranks high in one.
+
+```{r}
+dg  <- ed[rep(seq_len(nrow(ed)), ed$n), c("from", "to")]
+rownames(dg) <- NULL
+dgg <- igraph::graph_from_edgelist(as.matrix(dg), directed = TRUE)
+```
+
+### Degree centrality
+
+counts the number of edges attached to a node.
+
+Directed net- it measures in-degree and out-degree, high degree centrality means high co-occurrence.
+
+undirected net- for node v with n nodes, $C_D(v) = \frac{deg(v)}{n-1}$
+
+deg =?
+
+```{r}
+dc_tbl <- igraph::degree(dgg) |>
+    as.data.frame() |>
+    tibble::rownames_to_column("node") |>
+    dplyr::rename(`degree centrality` = 2) |>
+    dplyr::arrange(dplyr::desc(`degree centrality`))
+# find max
+names(which.max(igraph::degree(dgg)))
+```
+
+### Betweenness Centrality 
+
+how often a node lies on the shortest path between two other nodes
+
+$C_B(v) = \sum_{s\not = v \not = t}\frac{\sigma(s,t | v)}{\sigma(s,t)}$
+
+Where sigma(s,t) is the total number of shortest paths from s to t and sigma(s,t \| v) is the number of paths that pass through v.
+
+```{r}
+bc_tbl <- igraph::betweenness(dgg) |>
+    as.data.frame() |>
+    tibble::rownames_to_column("node") |>
+    dplyr::rename(`betweenness centrality` = 2) |>
+    dplyr::arrange(dplyr::desc(`betweenness centrality`))
+#find max
+names(which.max(igraph::betweenness(dgg)))
+```
