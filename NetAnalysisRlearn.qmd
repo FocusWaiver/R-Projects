@@ -43,6 +43,7 @@ Notes to self:
 -   Might need to reinstall packages on home system
 
 # Tutorial Data Prep
+
 **Data Note**: Could not find given data set, had ClaudeAI make a duplicate txt file to use. There are minor differences in output.
 
 ## Building co-occurrence Matrix (COmatrix)
@@ -188,7 +189,7 @@ Using `igraph` + `tidygraph` + `ggraph` pipeline
 Layout algorithms
 
 | Layout | Description | Best uses |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | "fr" | Fruchterman-Reingold force-directed | General use; groups connected nodes |
 | "kk" | Kamada-Kawai spring model | shortest path |
 | "circle" | nodes arranged in a circle | small networks; periodic structure |
@@ -274,7 +275,7 @@ dc_tbl <- igraph::degree(dgg) |>
 names(which.max(igraph::degree(dgg)))
 ```
 
-### Betweenness Centrality 
+### Betweenness Centrality
 
 how often a node lies on the shortest path between two other nodes
 
@@ -291,3 +292,5 @@ bc_tbl <- igraph::betweenness(dgg) |>
 #find max
 names(which.max(igraph::betweenness(dgg)))
 ```
+
+test push
