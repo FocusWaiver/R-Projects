@@ -59,3 +59,382 @@ Three things dplyr verbs will have in common
 Use the pipe, `|>` ,to chain multiple verbs together. The pipe passes what is to its left to the right. `x |> f(y)` (= `f(x,y)` ) is pronounced x 'then' f(y)
 
 3.2 Rows
+
+`filter()` allows you to keep rows based on the values of the columns. First argument is the data frame then the next arguments are the conditions that must be true to keep the row. Ex) departure delay of more than 120 mins.
+
+**Reminder** `|>` can be used to pass the first argument to the next part of code.
+
+```{r}
+flights |>
+  filter(dep_delay > 120)
+```
+
+Normal operators, plus `&` or `,` for "and", additionally `|` for "or"
+
+When combining `|` and `==` you can use `%in%`. The following code will keep rows where the variable equals one of the values (1 or 2) on the right.
+
+```{r}
+#%in% example
+flights |>
+  filter(month %in% c(1, 2))
+#example 2, save your filter()
+jan1 <- flights |>
+  filter(month == 1 & day == 1)
+```
+
+dplyr functions never modify their inputs(the original data frame) so to save your operations( e.g. filter()) you must assign your operation to a variable like example 2 above.
+
+3.2.2 Common Mistakes (that I wouldn't obviously avoid)
+
+`filter(month == 1 | 2)` is not the same as `filter( month ==1 or month ==2)`
+
+3.2.3
+
+`arrange()` changes the order of the rows based on the value of the columns.
+
+```{r}
+#intro to arrange()
+flights |>
+  arrange(year, month, day, dep_time)
+#Using desc() to re-order the data frame in descending order
+#most to least delayed
+flights |>
+  arrange(desc(dep_delay))
+```
+
+3.2.4
+
+`distinct()` finds all the unique rows in a dataset, starting from the beginning. If you want the number of occurances you can use `count()`
+
+```{r}
+#remove duplicate rows
+flights |> 
+  distinct()
+#Find all unique origin and destination pairs
+flights |>
+  distinct(origin, dest)
+#Can keep other columns when filtering as well
+flights |>
+  distinct(origin, dest, .keep_all = TRUE)
+```
+
+3.2.5 Exercises
+
+1\) in one pipeline find all flights that meet the following...
+
+```{r}
+#Arrival delay+2Hrs
+q1a <- flights |>
+  filter(arr_delay >= 120)
+#Dest is IAH or HOU
+q1b <- flights |>
+  filter(dest %in% c("IAH","HOU"))
+#operated by united, American or Delta
+q1c <- flights |>
+  filter(carrier %in% c("UA", "AA", "DL"))
+#depart in July, August and September
+q1d <- flights |>
+  filter(month %in% c(7,8,9))
+#Arrive 2H late, left on time
+q1e <- flights |>
+  filter(arr_delay >= 120, dep_delay <= 0 )
+#delayed at least an H but landed less than 30 mins delayed
+q1f <- flights |>
+  filter(dep_delay >= 60, arr_delay <= 30 )
+```
+
+check work:
+
+1a) `count(arr_delay <120)` outputs `FALSE` n=10200
+
+b\) `distinct(dest)` outputs "IAH" and "HOU"
+
+c\) `distinct(carrier)` outputs "UA", "AA", "DL"
+
+d\) `distinct(month)` outputs 7,8,9
+
+e\) `count(arr_delay <120)` outputs `FALSE` n=29
+
+`count(dep_delay >0)` outputs `FALSE` n=29
+
+f\) `count(dep_delay <60)` outputs `FALSE` n=239
+
+`count(arr_delay >30)` outputs `FALSE` n=239
+
+2)Find flights with the longest departure delays. Find ones that left earliest in the morning
+
+Longest delay 1301 minutes, 12:01AM is the earliest (dep_time = 1) Used `distinct()` lto verify.
+
+```{r}
+flights |>
+  arrange(desc(dep_delay))
+q2b <- flights |>
+  arrange(dep_time)
+```
+
+3\) Find the fastest flights, 762mile in 65 mins or \~11 miles a minute, or 703 mph
+
+```{r}
+q3 <- flights |>
+  arrange(desc(distance/air_time))
+```
+
+4\) Flight every day
+
+```{r}
+q4 <- flights |>
+  distinct(month,day)
+```
+
+365 observations, therefore Yes, there was a flight every day.
+
+3.3 Columns
+
+3.3.1 `mutate()` Adds new columns that are calculated from the existing columns. New column is default to the right side of the data set. (`.before =1` can switch it to the left) Can use `.before` and `.after` = variable to choose a specific position. Use .keep = "used" will only have the variables we used and not all of them in the data set. Without assigning to a variable, mutate() will just print the updated table. Be careful when deciding to make a new variable to save it to or rewriting the original data set.(Usually a new variable it the best)
+
+```{r}
+flights |>
+  mutate(
+    speed = distance/air_time*60,
+    .before = hour,
+    .keep = 'used'
+)
+```
+
+3.3.2 `select()`
+
+Allows you to choose exactly what variables you are interested in
+
+```{r}
+#by name
+flights |>
+  select(year, month, day)
+#all columns between two (inclusive)
+flights |>
+  select(year:day)
+#all columns except the ones between two (inclusive), - historically equals !
+flights |>
+  select(!year:day)
+#all columns that are characters
+flights |>
+  select(where(is.character))
+#rename using select(new name, old name)
+flights |>
+  select(tail_num = tailnum)
+```
+
+Other useful functions to help find what you need include
+
+`starts_with(), ends_with(), contains(), num_range("x", 1:3)`
+
+`num_range` example matches `x1, x2, x3`
+
+3.3.3 `rename()`
+
+If you want to keep all the variables but rename a few. If a bunch of names are messed up, you can use `janitor::clean_names()` for some automated cleaning.
+
+3.3.4 `relocate()`
+
+moves variables. Default columns to the front of the data set. Can use `.before` and `.after`as well.
+
+3.3.5. Exercises
+
+```{r}
+vars = c("year", "month", "day", "dep_delay","arr_delay", "year_delay")
+flights |>
+  select(any_of(vars))
+#3q5
+flights |>
+  select(contains("TIME"))
+#3q6
+threeq6 <- flights |>
+  rename(air_time_min = air_time) |>
+  relocate(air_time_min)
+#3q7
+flights |>
+  select(tailnum)
+```
+
+1\) `dep_time` = `sched_dep_time` + `dep_delay`
+
+2\) Filter(), select(listing each), relocate(), select(range), select(negative range)
+
+3\) It ignores it?
+
+4\) `any_of()`, looser way to select multiple variables. Will not error if a variable is missing. With the given vector of variables, it is an easy way to pass a vector of variables to select without listing them all or having them next to each other in the data set
+
+5\) Many of the selection helpers have `ignore.case` default to TRUE so case is not an issue. If you want case to be taken into account, set `ignore.case` to FALSE
+
+7\) you after selecting for tailnum variable, you no longer have the arr_delay variable in the affected data you are working with. Doing arrange() first would work.
+
+3.4 Pipe
+
+To combine multiple verbs together, you can use the `|>` like so...
+
+```{r}
+flights |>
+  filter(dest=="IAH") |>
+  mutate(speed = distance / air_time *60) |>
+  select(year:day, dep_time, carrier, flight, speed) |>
+  arrange(desc(speed))
+
+```
+
+NOTE: pipe shortcut is Ctrl+Shift+M. Will need to change settings to use `|>` instead of `%>%`
+
+`%>%` from **magrittr** which is included in tidyverse. `|>` is from base R and will work outside of tidyverse. Sounds like since 2021, \|\> has been improved
+
+3.5 Groups
+
+`group_by()` to divide the dataset into meaningful groups like "month". referred as a class to the dataframe, where the next verbs will now work "by month".
+
+3.5.2 summarize()
+
+If being used for a single summary stat, will reduce the dataset to have a single row for each group. NOTE: if there are blanks, summarize() will give NA for means. add na.rm = True
+
+```{r}
+flights |>
+  group_by(month) |>
+  summarize(
+    avg_delay = mean(dep_delay, na.rm = TRUE),
+    n = n()
+  )
+```
+
+Can create multiple summaries in a single call of summarize(), one for example is n() for a count.
+
+3.5.3 `slice_` functions
+
+-   `df |> slice_head(n = 1)` takes the first row from each group.
+
+-   `df |> slice_tail(n = 1)` takes the last row in each group.
+
+-   `df |> slice_min(x, n = 1)` takes the row with the smallest value of column `x`.
+
+-   `df |> slice_max(x, n = 1)` takes the row with the largest value of column `x`.
+
+-   `df |> slice_sample(n = 1)` takes one random row.
+
+n can be changed to include more than one row. Can use prop = 0.1 to get 10%. slice\_ defaults to include tied values. Set `with_ties = FALSE` to change.
+
+3.5.4 Grouping by multiple variables
+
+When you summarize a tibble grouped by more than one variable, the last group is removed. If you want it to do multiple in a row you can make a vector or change `.groups` to "drop" lose all groups or "keep" to preserve them.
+
+```{r}
+daily <- flights |>
+  group_by(year, month, day)
+daily
+#with summarize
+daily_flights <- daily |>
+  summarize(
+    n = n(),
+    .groups = "keep")
+```
+
+3.5.5 Ungrouping
+
+To avoid using `summarize()` you can use `ungroup()`
+
+NOTE: that if you sumarrize an ungrouped data frame you will get back a single row as dplyr treats it as belonging to one group.
+
+3.5.6 `.by`
+
+Newer syntax that avoids needing to suppress group message or needing ungroup when finished.
+
+```{r}
+#use by arg for single group
+flights |> 
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .by = month
+  )
+#multiple groups
+flights |> 
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .by = c(origin, dest)
+  )
+```
+
+3.5.7 Exercises
+
+```{r}
+flights |>
+  group_by(carrier) |>
+  summarize( 
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n()) |>
+  arrange(desc(delay))
+#challenge
+flights |>
+  group_by(carrier,dest) |>
+  summarize(n()) |>
+#Challenge att2
+#carrier
+delayCar <- flights |>
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .by = carrier
+  ) |>
+  arrange(desc(delay))
+  
+#dest
+delayDest <- flights |>
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .by = dest
+  ) |>
+  arrange(desc(delay))
+  
+#Carrier and Dest
+delayCD <- flights |>
+  summarize(n = n(),
+    delay = mean(dep_delay, na.rm = TRUE),
+    .by = c(carrier,dest)
+  ) |>
+  arrange(desc(delay))
+#Visual
+avgDelaygg <-ggplot(
+  data = delayCD,
+  mapping = aes(x = dest, y = delay, color = carrier)
+) +
+  geom_point()
+#color continous var
+avgDelayHeat <- ggplot(
+  data = delayCD,
+  mapping = aes(x = dest, y = carrier, color = delay)
+) +
+  geom_point()
+#q2
+q2 <- flights |> 
+  group_by(dest, flight) |>
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n()
+  ) |> 
+  arrange(desc(delay)) |>
+  distinct(dest, .keep_all = TRUE)
+#delay over time_hour
+q3 <- flights |>
+  group_by(hour) |>
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE)
+  )
+q3gg <- ggplot(data = q3,
+       mapping = aes(x = hour, y = delay)
+       )+ 
+  geom_line()
+#q4-negative n for splice_xx()
+
+```
+
+1.  F9 has an average delay around 20 mins. Challenge: RETURN to answer!!
+
+2.  see `q2` in chunk. flight 372 to CLE has the highest average delay with 483 mins.
+
+3.  see `q3gg` for line graph showing that as it gets later in the day, the delays tend to increase until around 19:00 - 21:00 where it plateaus at 25 mins, then drops to around 15 at 23:00.
